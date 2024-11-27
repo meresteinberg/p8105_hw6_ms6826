@@ -151,20 +151,21 @@ print(results_df)
 ```
 
 Create a plot that shows the estimated ORs and CIs for each city. Organize cities according to estimated OR, and comment on the plot.
+MxS CANNOT GET THIS TO ORGANIZE BY OR
 ```{r}
 results_df |>  
   arrange(odds_ratio) |> 
   mutate(city_state = factor(city_state, levels = city_state)) |> 
-  ggplot(aes(x=city_state, y=odds_ratio)) +
+  ggplot(aes(x=odds_ratio, y=city_state)) +
   geom_point() +
-  geom_errorbar(aes(ymin = conf_low, ymax = conf_high), width = 0.2) +
-  coord_flip()+
+  geom_errorbar(aes(xmin = conf_low, xmax = conf_high), width = 0.2) +
     labs(
     title = "Odds Ratio for Solving Homicides Comparing Male Victims to Female Victims",
-    x = "City",
-    y = "Odds Ratio (with 95% CI)"
+    x = "Odds Ratio (with 95% CI)",
+    y = "City"
   )
 ```
+
 
 
 ## Problem 3
@@ -208,9 +209,100 @@ bwt_df=
 
 Propose a regression model for birthweight. This model may be based on a hypothesized structure for the factors that underly birthweight, on a data-driven model-building process, or a combination of the two. Describe your modeling process and show a plot of model residuals against fitted values – use add_predictions and add_residuals in making this plot.
 
+Look at data 
+```{r}
+bwt_df |> 
+  ggplot(aes(x=gaweeks, y=bwt))+
+  geom_point(alpha=.5)
+
+bwt_df |> 
+  ggplot(aes(x=momage, y=bwt))+
+  geom_point(alpha=.5)
+
+bwt_df |> 
+  ggplot(aes(x=smoken, y=bwt))+
+  geom_point(alpha=.5)
+
+```
+Fit some models 
+```{r}
+linear_mod_momage=lm(bwt~momage, data=bwt_df)
+linear_mod_smoken=lm(bwt~smoken, data=bwt_df)
+linear_mod_gaweeks=lm(bwt~gaweeks, data=bwt_df)
+
+pwl_mod_momage=lm(bwt~momage, data=bwt_df)
+pwl_mod_smoken=lm(bwt~smoken, data=bwt_df)
+pwl_mod_gaweeks=lm(bwt~gaweeks, data=bwt_df)
+
+smooth_mod_momage=gam(bwt~s(momage), data=bwt_df)
+smooth_mod_smoken=gam(bwt~s(smoken), data=bwt_df)
+smooth_mod_gaweeks=gam(bwt~ s(gaweeks), data=bwt_df)
+```
+
+Look at models
+```{r}
+bwt_df |> 
+  add_predictions(linear_mod_gaweeks) |>
+  ggplot(aes(x=gaweeks, y=bwt))+
+  geom_point(alpha=.5) +
+  geom_line(aes(y=pred), color="red")
+
+bwt_df |> 
+  add_predictions(pwl_mod_gaweeks) |>
+  ggplot(aes(x=gaweeks, y=bwt))+
+  geom_point(alpha=.5) +
+  geom_line(aes(y=pred), color="red")
+
+
+bwt_df |> 
+  add_predictions(smooth_mod_gaweeks) |>
+  ggplot(aes(x=gaweeks, y=bwt))+
+  geom_point(alpha=.5) +
+  geom_line(aes(y=pred), color="red")
+
+
+bwt_df |> 
+  add_predictions(linear_mod_momage) |> 
+  ggplot(aes(x=momage, y=bwt))+
+  geom_point(alpha=.5) +
+  geom_line(aes(y=pred), color="red")
+
+bwt_df |> 
+  add_predictions(pwl_mod_momage) |> 
+  ggplot(aes(x=momage, y=bwt))+
+  geom_point(alpha=.5) +
+  geom_line(aes(y=pred), color="red")
+
+
+bwt_df |> 
+  add_predictions(smooth_mod_momage) |> 
+  ggplot(aes(x=momage, y=bwt))+
+  geom_point(alpha=.5) +
+  geom_line(aes(y=pred), color="red")
+
+
+bwt_df |> 
+  add_predictions(linear_mod_smoken) |> 
+  ggplot(aes(x=smoken, y=bwt))+
+  geom_point(alpha=.5) +
+   geom_line(aes(y=pred), color="red")
+bwt_df |> 
+  add_predictions(pwl_mod_smoken) |> 
+  ggplot(aes(x=smoken, y=bwt))+
+  geom_point(alpha=.5) +
+   geom_line(aes(y=pred), color="red")
+bwt_df |> 
+  add_predictions(smooth_mod_smoken) |> 
+  ggplot(aes(x=smoken, y=bwt))+
+  geom_point(alpha=.5) +
+   geom_line(aes(y=pred), color="red")
+
+```
+
+Fit a model
 ```{r}
 fit=
-  lm(bwt~momage + gaweeks + smoken, data = bwt_df)
+  gam(bwt~s(momage) + s(gaweeks) + s(smoken), data = bwt_df)
 
 bwt_df |> 
   modelr::add_residuals(fit) |> 
@@ -219,31 +311,40 @@ bwt_df |>
   geom_point()
 
 ```
----I chose to include the predictors 1)mothers age at delivery, 2)gestational age, and 3)average number of cigarettes smoked per day during pregnancy, because research has shown that these factors affect the health (and sometimes the birthweight) of newborns. 
+---I chose to include the predictors 1)mothers age at delivery, 2)gestational age, and 3)average number of cigarettes smoked per day during pregnancy, because research has shown that these factors affect the health and the birthweight of newborns. I chose a smooth model because I observed that the relationships between birthweight and both mother's age at delivery and average number of cigarettes smoked are not linear, and a smooth model will help account for this non-linearity. This plot of resid vs pred for the smooth model is more promising than the linear model, because the datapoints are less clustered and more spread around the 0 line on the y axis.  
 
 Compare your model to two others:
 One using length at birth and gestational age as predictors (main effects only)
---COMPARE residuals/predictions GRAPHS
 ```{r}
-fit |> 
-  broom::tidy()
+two_fit=gam(bwt ~ s(blength) + s(gaweeks), data =bwt_df) 
 
 bwt_df |> 
-  lm(bwt ~ blength + gaweeks, data =_) |> 
-  broom::tidy()
+  modelr::add_residuals(two_fit) |> 
+  modelr::add_predictions(two_fit) |> 
+  ggplot(aes(x=pred, y=resid)) +
+  geom_point()
+
 ```
---COMPARISON: 
+--Compared to the model I fit (that includes mothers age at delivery, gestational age, and average number of cigarettes smoked per day during pregnancy), both models are demonstrating some clustering around the 0 y-axis line towards the right of the graphs. Both models also have several points with very large residuals. The model I fit, however, is less clustered than this model. My model also appears to be less hetereoscedastic compared to this model.
 
 One using head circumference, length, sex, and all interactions (including the three-way interaction) between these
 ```{r}
-fit |> 
-  broom::tidy()
+int_fit= gam(
+  bwt ~ s(blength) + s(bhead) +
+    te(blength, bhead) +
+    te(blength, by= babysex) +
+    te(bhead, by= babysex) +
+    te(blength, bhead, by=babysex),
+  data = bwt_df
+)
 
 bwt_df |> 
-  lm(bwt ~ blength + bhead+ babysex + blength*bhead + blength*babysex + bhead*babysex + blength*babysex*bhead , data =_) |> 
-  broom::tidy()
+  modelr::add_residuals(int_fit) |> 
+  modelr::add_predictions(int_fit) |> 
+  ggplot(aes(x=pred, y=resid)) +
+  geom_point()
 ```
---COMPARISON: 
+--Compared to the model I fit, this model's points are more centered around the 0 y-axis line (indicating a better fit). My model also has more clustered data and there are more datapoints with larger residuals (indicating a worse fit). This model, however, appears to be more hetereoscedastic compared to my model.
 
 Make this comparison in terms of the cross-validated prediction error; use crossv_mc and functions in purrr as appropriate.
 ```{r}
@@ -253,17 +354,25 @@ cv_df=
     train=map(train, as_tibble),
     test=map(test, as_tibble)
   )
+
 cv_res_df=
   cv_df |> 
   mutate(
-    linear_my_mod=map(train, \(x) lm(bwt~momage + gaweeks + smoken, data=x)),
-    linear_two_mod=map(train, \(x) lm(bwt ~ blength + gaweeks, data=x)),
-    linear_int_mod=map(train, \(x) lm(bwt ~ blength + bhead+ babysex + blength*bhead + blength*babysex + bhead*babysex + blength*babysex*bhead , data=x))
+    my_mod=map(train, \(x)  gam(bwt~s(momage) + s(gaweeks) + s(smoken), data = x)),
+    two_mod=map(train, \(x) gam(bwt ~ s(blength) + s(gaweeks), data =x) ),
+    int_mod=map(train, \(x) gam(
+  bwt ~ s(blength) + s(bhead) +
+    te(blength, bhead) +
+    te(blength, by= babysex) +
+    te(bhead, by= babysex) +
+    te(blength, bhead, by=babysex),
+  data = x
+))
   ) |> 
   mutate(
-    rmse_mine=map2_dbl(linear_my_mod, test, rmse),
-    rmse_twoterms=map2_dbl(linear_two_mod, test, rmse),
-    rmse_interactions=map2_dbl(linear_int_mod, test, rmse)
+    rmse_mine=map2_dbl(my_mod, test, rmse),
+    rmse_twoterms=map2_dbl(two_mod, test, rmse),
+    rmse_interactions=map2_dbl(int_mod, test, rmse)
   )
 
 cv_res_df |> 
@@ -277,5 +386,5 @@ cv_res_df |>
   ggplot(aes(x=model, y=rmse))+
   geom_violin()
 ```
-
+---Based off this graph, since lower RSME indicates a better fit, the model with head circumference, length, sex, and all interactions appears to be the best model. My model has the highest RSME. There is also some  variability in RSME for for model with the interactions compared to the model with just the two terms (length at birth and gestational age).
 
